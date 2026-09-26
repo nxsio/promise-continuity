@@ -24,6 +24,31 @@ function sourceDetails(memory) {
   } catch { return null; }
 }
 
+export async function recallAll(memory, context) {
+  const commitments = [];
+  let beforeId = null;
+  while (true) {
+    const page = await memory.call('recall_commitments', beforeId === null ? { context } : { context, before_id: beforeId });
+    if (!page || page.context !== context || !Array.isArray(page.commitments) || page.commitments.length > 20 || !Object.hasOwn(page, 'next_before_id')) {
+      throw new Error('Continuity Core returned an invalid commitment page. Check that it supports pagination.');
+    }
+    let previousId = beforeId;
+    for (const item of page.commitments) {
+      if (!item || !Number.isSafeInteger(item.id) || item.id < 1 || (previousId !== null && item.id >= previousId) || typeof item.commitment !== 'string' || typeof item.next_action !== 'string') {
+        throw new Error('Continuity Core returned an invalid commitment page.');
+      }
+      previousId = item.id;
+    }
+    const cursor = page.next_before_id;
+    if (cursor !== null && (!Number.isSafeInteger(cursor) || cursor < 1 || cursor !== previousId)) {
+      throw new Error('Continuity Core returned an invalid or stalled page cursor.');
+    }
+    commitments.push(...page.commitments);
+    if (cursor === null) return commitments;
+    beforeId = cursor;
+  }
+}
+
 export async function captureNote(sourceNote, context = 'personal') {
   const path = resolve(sourceNote);
   if (!path.toLowerCase().endsWith('.md')) throw new Error('Choose a Markdown note (.md).');
@@ -33,9 +58,7 @@ export async function captureNote(sourceNote, context = 'personal') {
   if (!quotes.length) throw new Error('No promise sentence found. Try a line beginning “I promised…” or “我答应…”.');
   const { mcpUrl } = mcpConfig();
   return withMemory(mcpUrl, async memory => {
-    const recalled = await memory.call('recall_commitments', { context });
-    if (!Array.isArray(recalled.commitments)) throw new Error('Memory returned no commitment list.');
-    const existing = recalled.commitments;
+    const existing = await recallAll(memory, context);
     const saved = [];
     for (const sourceQuote of quotes) {
       const old = existing.find(item => item.commitment === sourceQuote && sourceDetails(item)?.sourceNote === path);
@@ -55,9 +78,8 @@ export async function captureNote(sourceNote, context = 'personal') {
 export async function listPromises(context = 'personal') {
   const { mcpUrl } = mcpConfig();
   return withMemory(mcpUrl, async memory => {
-    const recalled = await memory.call('recall_commitments', { context });
-    if (!Array.isArray(recalled.commitments)) throw new Error('Memory returned no commitment list.');
-    return { protocol: memory.protocol, promises: recalled.commitments.filter(item => sourceDetails(item)).map(item => ({
+    const recalled = await recallAll(memory, context);
+    return { protocol: memory.protocol, promises: recalled.filter(item => sourceDetails(item)).map(item => ({
       id: item.id, quote: item.commitment, sourceNote: sourceDetails(item).sourceNote,
       sourceFile: basename(sourceDetails(item).sourceNote)
     })) };
@@ -88,9 +110,7 @@ export async function prepareDraft({ request, context = 'personal', id = null, s
   if (searchQuery && !modelConfig.tavilyKey) throw new Error('TAVILY_API_KEY is required when web search is requested.');
   onStage('Recalling your saved promise');
   const selected = await withMemory(modelConfig.mcpUrl, async memory => {
-    const recalled = await memory.call('recall_commitments', { context });
-    if (!Array.isArray(recalled.commitments)) throw new Error('Memory returned no commitment list.');
-    const choice = selectMemory(recalled.commitments, request, id);
+    const choice = selectMemory(await recallAll(memory, context), request, id);
     const resumed = await memory.call('resume_commitment', { id: choice.id });
     if (resumed.commitment !== choice.commitment) throw new Error('Memory changed during this request.');
     return { id: choice.id, quote: choice.commitment, details: JSON.parse(resumed.next_step), protocol: memory.protocol };
