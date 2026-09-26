@@ -5,11 +5,18 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { mcpConfig } from './config.js';
 import { captureNote, extractCommitments, listPromises, prepareDraft, saveEditedDraft, MAX_NOTE_CHARS } from './workflow.js';
+import { startNoteWatch } from './watch.js';
 
 const webDir = fileURLToPath(new URL('../web/', import.meta.url));
 const assets = new Map([['/', ['index.html', 'text/html; charset=utf-8']], ['/styles.css', ['styles.css', 'text/css; charset=utf-8']], ['/app.js', ['app.js', 'text/javascript; charset=utf-8']]]);
 const port = Number(process.env.PROMISE_PORT ?? 43188);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PROMISE_PORT must be a valid port.');
+const subscribers = new Set();
+const watchEvent = (type, data) => {
+  const message = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const response of subscribers) response.write(message);
+};
+const noteWatch = startNoteWatch(process.env.PROMISE_WATCH_DIR, watchEvent);
 
 function send(res, status, payload) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -45,6 +52,13 @@ const server = createServer(async (req, res) => {
   }
   const path = new URL(req.url, `http://${host}`).pathname;
   try {
+    if (req.method === 'GET' && path === '/api/events') {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+      subscribers.add(res);
+      res.write(`event: mode\ndata: ${JSON.stringify(noteWatch.snapshot())}\n\n`);
+      res.on('close', () => subscribers.delete(res));
+      return;
+    }
     if (req.method === 'GET' && assets.has(path)) {
       const [file, type] = assets.get(path);
       const content = await readFile(join(webDir, file));
@@ -89,3 +103,4 @@ const server = createServer(async (req, res) => {
   }
 });
 server.listen(port, '127.0.0.1', () => console.log(`Promise Continuity: http://127.0.0.1:${port}`));
+server.on('close', () => noteWatch.close());

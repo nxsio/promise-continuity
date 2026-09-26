@@ -2,6 +2,9 @@ const $ = id => document.getElementById(id);
 let promises = [];
 let selectedId = null;
 let currentDraft = null;
+let renderedPromises = '';
+let refreshNumber = 0;
+let watchDirectory = null;
 
 function status(id, message, error = false) {
   const element = $(id);
@@ -14,31 +17,73 @@ async function jsonResponse(response) {
   return data;
 }
 function renderPromises() {
-  $('promises').replaceChildren();
   $('promise-count').textContent = String(promises.length);
   $('list-empty').hidden = promises.length > 0;
-  for (const item of promises) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `promise${selectedId === item.id ? ' active' : ''}`;
-    button.setAttribute('aria-pressed', String(selectedId === item.id));
-    const quote = document.createElement('span'); quote.className = 'quote'; quote.textContent = item.quote;
-    const source = document.createElement('span'); source.className = 'source'; source.textContent = `From ${item.sourceFile} · Memory #${item.id}`;
-    button.append(quote, source);
-    button.addEventListener('click', () => { selectedId = item.id; $('selected').textContent = item.quote; $('prepare').disabled = false; renderPromises(); });
-    $('promises').append(button);
+  const signature = JSON.stringify(promises.map(item => [item.id, item.quote, item.sourceFile]));
+  if (signature !== renderedPromises) {
+    $('promises').replaceChildren();
+    renderedPromises = signature;
+    for (const item of promises) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.id = String(item.id);
+      button.className = 'promise';
+      const quote = document.createElement('span'); quote.className = 'quote'; quote.textContent = item.quote;
+      const source = document.createElement('span'); source.className = 'source'; source.textContent = `From ${item.sourceFile} · Memory #${item.id}`;
+      button.append(quote, source);
+      button.addEventListener('click', () => { selectedId = item.id; $('selected').textContent = item.quote; $('prepare').disabled = false; renderPromises(); });
+      $('promises').append(button);
+    }
+  }
+  for (const button of $('promises').children) {
+    const active = Number(button.dataset.id) === selectedId;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
   }
 }
-async function refresh() {
-  status('capture-status', 'Loading saved promises…');
+async function refresh(quiet = false) {
+  const requestNumber = ++refreshNumber;
+  if (!quiet) status('capture-status', 'Loading saved promises…');
   try {
     const data = await jsonResponse(await fetch('/api/promises'));
+    if (requestNumber !== refreshNumber) return;
     promises = data.promises;
-    if (selectedId && !promises.some(item => item.id === selectedId)) selectedId = null;
     renderPromises();
-    status('capture-status', `Connected to local memory · MCP ${data.protocol}`);
-  } catch (error) { status('capture-status', error.message, true); }
+    if (!quiet) status('capture-status', `Connected to local memory · MCP ${data.protocol}`);
+  } catch (error) {
+    status(quiet ? 'watch-status' : 'capture-status', quiet ? `Watching ${watchDirectory} · ${error.message}` : error.message, true);
+  }
 }
+function watchStatus(message, error = false) {
+  status('watch-status', message, error);
+}
+const events = new EventSource('/api/events');
+let watching = false;
+events.addEventListener('mode', event => {
+  const mode = JSON.parse(event.data);
+  watchDirectory = mode.directory;
+  if (mode.mode === 'manual') {
+    watchStatus('Manual mode. Paste or import notes here.');
+    events.close();
+  } else if (mode.mode === 'error') {
+    watchStatus(`${mode.directory}: ${mode.error}`, true);
+    events.close();
+  } else {
+    watching = true;
+    watchStatus(mode.error
+      ? `Watching ${mode.directory} · ${mode.error}`
+      : `Watching ${mode.directory}. New .md files are remembered; edits and deletions do not sync.`, Boolean(mode.error));
+  }
+});
+events.addEventListener('captured', async event => {
+  const result = JSON.parse(event.data);
+  watchStatus(`Watching ${watchDirectory} · Remembered ${result.saved.length} promise${result.saved.length === 1 ? '' : 's'} from ${result.file}.`);
+  await refresh(true);
+});
+events.addEventListener('watch_error', event => watchStatus(`Watching ${watchDirectory} · ${JSON.parse(event.data).message}`, true));
+events.onerror = () => watchStatus(watching
+  ? `Watching ${watchDirectory} · Live updates disconnected. Reconnecting…`
+  : 'Could not read note source. Reconnecting…', true);
 $('note').addEventListener('input', () => { $('note-count').textContent = `${$('note').value.length.toLocaleString()} / 40,000`; });
 $('note-file').addEventListener('change', async () => {
   const file = $('note-file').files[0];

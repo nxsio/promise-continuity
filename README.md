@@ -1,16 +1,18 @@
 # Yesterday's promise. Today's reply to edit.
 
-Paste or import your own Markdown note. Promise Continuity finds the promises you wrote, remembers them across sessions, and prepares an editable reply for the one you select. You can save changes to a local file. It never sends the reply. Drafting sends your request and a relevant note excerpt to your configured model provider; optional Tavily search sends your query only when selected.
+Paste a Markdown note, or choose a notes folder and watch new promises appear as you write. Promise Continuity remembers them across sessions and saves an editable reply for the one you select. Notes and drafts stay in local files. Drafting sends your request and a relevant note excerpt to your configured model provider; Tavily receives your query only when you select web search. It never sends the reply.
 
 ## Run the local page
 
 Use Node.js 24+ and pnpm. Start [Continuity Core](https://github.com/nxsio/continuity-core) separately with `pnpm start`; keep its SQLite database when you restart it. In this repository, install dependencies once with `pnpm install`, set your model key in the server environment, and run:
 
 ```bash
-NEBIUS_API_KEY=your-token-factory-key pnpm web
+PROMISE_WATCH_DIR=/absolute/path/to/notes NEBIUS_API_KEY=your-token-factory-key pnpm web
 ```
 
-Open `http://127.0.0.1:43188`. Add a note such as `我答应 Maya 周一前给她一份项目更新。` or `I promised Alex a summary by Friday.` Select the saved promise, ask for a reply, then edit and save it. Restart both servers and reopen the page to recall the same promises. A missing memory service or model key produces an error, not a completed draft.
+Open `http://127.0.0.1:43188`. Add a note such as `我答应 Maya 周一前给她一份项目更新。` or `I promised Alex a summary by Friday.` A watched folder is scanned once at startup; newly created Markdown files in that folder appear on the open page without pasting or refreshing. Select a saved promise, ask for a reply, then edit and save it. Restart both servers and reopen the page to recall the same promises.
+
+`PROMISE_WATCH_DIR` is optional and must be an absolute path. Leave it unset for manual paste and import. Watching reads only regular `.md` files directly inside the chosen folder; it does not follow symlinks or scan subfolders. Edits and deletions of existing files do not sync to memory. Watching saves promises through the local MCP service and never calls the model or Tavily on its own. The page shows capture errors, including when the memory service is unavailable, and retries when it returns.
 
 The page listens only on loopback. Set `PROMISE_PORT` to change its port, `CONTINUITY_URL` to point to another local MCP endpoint, and `PROMISE_HOME` to choose where notes and drafts are saved. The default MCP endpoint is `http://127.0.0.1:43187/mcp`; drafts and imported notes live under `~/Documents/Promise Continuity/`. Notes are limited to 40,000 characters, and edited drafts to 20,000. Your provider keys remain in server environment variables.
 
