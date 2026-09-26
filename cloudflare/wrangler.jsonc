@@ -19,7 +19,7 @@
   }],
   "vars": {
     "PROMISE_MODEL_PROVIDER": "deepinfra",
-    "DAILY_MODEL_LIMIT": "100",
-    "VISITOR_DAILY_MODEL_LIMIT": "3"
+    "DAILY_MODEL_LIMIT": "500",
+    "VISITOR_DAILY_MODEL_LIMIT": "20"
   }
 }
