@@ -5,7 +5,8 @@
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
-    "start": "node src/cli.js"
+    "start": "node src/cli.js",
+    "web": "node src/server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "2.1.0"

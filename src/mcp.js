@@ -4,7 +4,8 @@ export async function withMemory(url, work) {
   const client = new Client({ name: 'promise-continuity', version: '0.1.0' });
   const transport = new StreamableHTTPClientTransport(new URL(url));
   try {
-    await client.connect(transport);
+    try { await client.connect(transport); }
+    catch (error) { throw new Error(`Cannot connect to Continuity Core MCP server (${error.message}). Check CONTINUITY_URL and start the local memory service.`); }
     const tools = (await client.listTools()).tools.map(tool => tool.name);
     for (const name of ['remember_commitment', 'recall_commitments', 'resume_commitment']) {
       if (!tools.includes(name)) throw new Error(`Continuity Core tool missing: ${name}`);

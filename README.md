@@ -1,41 +1,41 @@
-# Turn yesterday's promise into a reply you can edit today.
+# Yesterday's promise. Today's reply to edit.
 
-Write a promise in a Markdown note. Promise Continuity remembers it across sessions, finds it when you ask later, and saves a reply draft beside the original note and any web sources you chose to use. You review and send the reply yourself.
+Paste or import your own Markdown note. Promise Continuity finds the promises you wrote, remembers them across sessions, and prepares an editable reply for the one you select. You can save changes to a local file. It never sends the reply.
 
-## Try it on your own note
+## Run the local page
 
-Requires Node.js 24+, pnpm, and a running [Continuity Core](https://github.com/nxsio/continuity-core) server. Start that server with `pnpm start` and keep its local SQLite database. This app connects to its Streamable HTTP MCP endpoint at `http://127.0.0.1:43187/mcp` using the official MCP client SDK.
-
-```bash
-pnpm install
-pnpm start capture /path/to/your-friday-note.md personal
-```
-
-A note can contain a line such as `I promised Maya a brief Token Factory update by Monday.` The capture command prints the saved promise ID. Stop and restart Continuity Core, then run a new process:
+Use Node.js 24+ and pnpm. Start [Continuity Core](https://github.com/nxsio/continuity-core) separately with `pnpm start`; keep its SQLite database when you restart it. In this repository, install dependencies once with `pnpm install`, set your model key in the server environment, and run:
 
 ```bash
-NEBIUS_API_KEY=your-token-factory-key pnpm start prepare "I promised Maya an update; prepare my reply" personal
+NEBIUS_API_KEY=your-token-factory-key pnpm web
 ```
 
-The command shows the note it found, whether web search ran, the model response time and token usage, and the path to an editable Markdown draft. Drafts go to `~/Documents/Promise Continuity/` by default. Set `PROMISE_HOME` to choose another local directory. Nothing sends a message.
+Open `http://127.0.0.1:43188`. Add a note such as `我答应 Maya 周一前给她一份项目更新。` or `I promised Alex a summary by Friday.` Select the saved promise, ask for a reply, then edit and save it. Restart both servers and reopen the page to recall the same promises. A missing memory service or model key produces an error, not a completed draft.
 
-## Choose current web information
+The page listens only on loopback. Set `PROMISE_PORT` to change its port, `CONTINUITY_URL` to point to another local MCP endpoint, and `PROMISE_HOME` to choose where notes and drafts are saved. The default MCP endpoint is `http://127.0.0.1:43187/mcp`; drafts and imported notes live under `~/Documents/Promise Continuity/`. Notes are limited to 40,000 characters, and edited drafts to 20,000. Your provider keys remain in server environment variables.
 
-Web search runs only when you request it:
+## Model and web sources
+
+The default model endpoint is NVIDIA Nemotron 3 Super on [Nebius Token Factory](https://github.com/nebius/token-factory-cookbook/blob/main/models/nemotron/nemotron3-super-120B.md). For an explicit development run on DeepInfra's deployment of the same NVIDIA model:
 
 ```bash
-NEBIUS_API_KEY=your-token-factory-key TAVILY_API_KEY=your-tavily-key \
-  pnpm start prepare "I promised Maya an update; prepare my reply" personal \
-  --search "Nebius Token Factory latest model updates"
+PROMISE_MODEL_PROVIDER=deepinfra DEEPINFRA_API_KEY=your-development-key pnpm web
 ```
 
-Tavily source links appear in a separate section of the saved draft. Without `--search`, the draft says web search was off. If you request search without `TAVILY_API_KEY`, the command stops with an error.
+`NEMOTRON_BASE_URL` and `NEMOTRON_MODEL` can override an OpenAI-compatible endpoint and model. The provider defaults and key names are in `src/config.js`. Selecting web search on the page sends only your chosen query to Tavily and requires `TAVILY_API_KEY`. Search is off by default. When it runs, the page shows returned source links; when it fails, no draft is marked complete.
 
-## Model endpoints
+The original note and saved draft stay in local files. Continuity Core stores the promise in local SQLite through its Streamable HTTP MCP server and the official MCP client SDK. The selected note excerpt goes to the configured model provider when you prepare a draft. You review and send the final message yourself.
 
-The default is Nemotron 3 Super on Nebius Token Factory, using the [Nebius cookbook endpoint and model ID](https://github.com/nebius/token-factory-cookbook/blob/main/models/nemotron/nemotron3-super-120B.md). For development with DeepInfra's deployment of the same NVIDIA model, set `PROMISE_MODEL_PROVIDER=deepinfra` and `DEEPINFRA_API_KEY`. Endpoint, model ID, and environment key names live together in `src/config.js`; `NEMOTRON_BASE_URL` and `NEMOTRON_MODEL` allow an OpenAI-compatible endpoint override.
+## Command line
 
-The note and saved draft stay in local files; Continuity Core stores the promise in local SQLite. The selected note excerpt is sent to the chosen model provider to write the draft. A Tavily search sends your chosen query only when you pass `--search`. The draft remains yours to edit and send.
+The CLI shares the same capture and draft workflow with the page:
+
+```bash
+pnpm start capture /path/to/note.md personal
+pnpm start prepare "I promised Alex a summary; prepare my reply" personal --id 1
+```
+
+Add `--search "your query"` to explicitly use Tavily. Without a saved matching promise, the CLI stops and asks you to choose an ID. Draft files include the original note, optional web sources, and the model and MCP steps used.
 
 ## License
 
