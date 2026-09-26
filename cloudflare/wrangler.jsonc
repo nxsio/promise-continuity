@@ -3,6 +3,9 @@
   "name": "promise-continuity",
   "main": "./worker.js",
   "compatibility_date": "2026-09-25",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "promise-continuity.nxsio.com", "custom_domain": true }],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
@@ -11,7 +14,7 @@
   "d1_databases": [{
     "binding": "DB",
     "database_name": "promise-continuity",
-    "database_id": "00000000-0000-0000-0000-000000000000",
+    "database_id": "f8555f75-b011-4fb7-9760-3208f16a6651",
     "migrations_dir": "./migrations"
   }],
   "vars": {

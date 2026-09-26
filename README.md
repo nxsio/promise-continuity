@@ -2,6 +2,8 @@
 
 Paste a note, choose the promise you meant, and save an editable reply. The local page can watch a notes folder; the Cloudflare page accepts pasted notes and stores each visitor's notes and drafts in a separate workspace. Drafting sends your request and a relevant note excerpt to your configured model provider. Tavily receives your query only when you select web search. You send the final reply yourself.
 
+[Try the live demo](https://promise-continuity.nxsio.com/). It currently uses DeepInfra for the development run. Once a Nebius Token Factory key is issued, its Worker secret and one provider setting switch the same flow to Nebius.
+
 ## Run the local page
 
 Use Node.js 24+ and pnpm. Start [Continuity Core](https://github.com/nxsio/continuity-core) separately with `pnpm start`; keep its SQLite database when you restart it. In this repository, install dependencies once with `pnpm install`, set your model key in the server environment, and run:
@@ -34,10 +36,9 @@ The independent `cloudflare/` Worker serves `/` and the same note, promise, and 
 
 The Worker calls a separate [Continuity Core](https://github.com/nxsio/continuity-core) Streamable HTTP MCP service at `CONTINUITY_MCP_URL`. That service must require the same `CORE_SHARED_SECRET` bearer token. A missing or failing MCP service, model, or requested Tavily search returns an error; it never produces a completed draft from a substitute response.
 
-Use Node.js 24+ and pnpm. Install with `pnpm install`. Create a D1 database, then replace the zero UUID in `cloudflare/wrangler.jsonc` with the database ID returned by Wrangler:
+Use Node.js 24+ and pnpm. Install with `pnpm install`. The company D1 database and custom domain are already configured in `cloudflare/wrangler.jsonc`. Apply future migrations before publishing:
 
 ```bash
-pnpm exec wrangler d1 create promise-continuity
 pnpm exec wrangler d1 migrations apply DB --remote --config cloudflare/wrangler.jsonc
 ```
 
