@@ -1,0 +1,7 @@
+AGENTS.md
+.ai/
+.local/
+node_modules/
+.env
+.env.*
+*.log

@@ -1,0 +1,14 @@
+{
+  "name": "promise-continuity",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node src/cli.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.1.0"
+  },
+  "packageManager": "pnpm@10.30.2"
+}
