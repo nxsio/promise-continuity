@@ -40,7 +40,7 @@ export async function recallAll(memory, context) {
       previousId = item.id;
     }
     const cursor = page.next_before_id;
-    if (cursor !== null && (!Number.isSafeInteger(cursor) || cursor < 1 || cursor !== previousId)) {
+    if (cursor !== null && (!page.commitments.length || !Number.isSafeInteger(cursor) || cursor < 1 || cursor !== previousId)) {
       throw new Error('Continuity Core returned an invalid or stalled page cursor.');
     }
     commitments.push(...page.commitments);
