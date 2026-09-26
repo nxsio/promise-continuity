@@ -14,7 +14,7 @@
     <section class="intro"><p class="eyebrow">YOUR NOTES, CARRIED FORWARD</p><h1>Yesterday's promise.<br><em>Today's reply to edit.</em></h1><p class="lead">Add a note. Pick the promise you meant. Prepare a reply grounded in what you actually wrote.</p></section>
     <div class="columns">
       <section class="panel notes" aria-labelledby="note-heading">
-        <div class="panel-head"><span class="step">01 / REMEMBER</span><h2 id="note-heading">Start with your note</h2><p>Paste Markdown or import a local .md file. The note stays on this computer.</p></div>
+        <div class="panel-head"><span class="step">01 / REMEMBER</span><h2 id="note-heading">Start with your note</h2><p>Paste Markdown or import a local .md file. The full note is stored locally. Drafting sends your request and a relevant excerpt to your configured model provider.</p></div>
         <label for="note" class="field-label">YOUR NOTE</label>
         <textarea id="note" maxlength="40000" placeholder="我答应 Maya 周一前给她一份项目更新。&#10;I promised Alex a short summary by Friday."></textarea>
         <div class="note-actions"><label class="import" for="note-file">Import .md</label><input id="note-file" type="file" accept=".md,text/markdown,text/plain"><span id="note-count">0 / 40,000</span></div>
@@ -25,7 +25,7 @@
         <div id="promises" class="promise-list" role="group" aria-label="Saved promises"></div>
       </section>
       <section class="panel draft" aria-labelledby="draft-heading">
-        <div class="panel-head"><span class="step">02 / PREPARE</span><h2 id="draft-heading">Make a reply yours</h2><p>Select one saved promise, then ask for an editable draft. Nothing is sent.</p></div>
+        <div class="panel-head"><span class="step">02 / PREPARE</span><h2 id="draft-heading">Make a reply yours</h2><p>Select one saved promise, then ask for an editable draft. No reply is sent for you.</p></div>
         <div class="selected-label">SELECTED PROMISE</div><div id="selected" class="selected">Choose a promise from your saved list.</div>
         <label class="field-label" for="request">YOUR REQUEST</label><input id="request" type="text" maxlength="2000" value="Help me prepare the reply.">
         <label class="search-option"><input id="search" type="checkbox"> <span>Use current web sources with Tavily</span></label>
@@ -43,7 +43,7 @@
         </div>
       </section>
     </div>
-    <footer>Memory stays in local SQLite. Notes and drafts stay in local files. You review and send the final reply.</footer>
+    <footer>Memory, notes, and drafts are stored locally. Drafting sends your request and a note excerpt to your model provider. Tavily receives your search query only when selected. You send the final reply.</footer>
   </main>
 </body>
 </html>

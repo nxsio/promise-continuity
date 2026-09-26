@@ -1,6 +1,6 @@
 # Yesterday's promise. Today's reply to edit.
 
-Paste or import your own Markdown note. Promise Continuity finds the promises you wrote, remembers them across sessions, and prepares an editable reply for the one you select. You can save changes to a local file. It never sends the reply.
+Paste or import your own Markdown note. Promise Continuity finds the promises you wrote, remembers them across sessions, and prepares an editable reply for the one you select. You can save changes to a local file. It never sends the reply. Drafting sends your request and a relevant note excerpt to your configured model provider; optional Tavily search sends your query only when selected.
 
 ## Run the local page
 

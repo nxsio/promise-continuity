@@ -106,7 +106,7 @@ function showDraft(result) {
   }
   $('draft-result').hidden = false;
   status('draft-status', `Draft saved locally · ${result.model.tokens.input ?? '?'} input / ${result.model.tokens.output ?? '?'} output tokens${result.web ? ` · ${result.web.sources.length} Tavily sources` : ' · web search off'}.`);
-  status('save-status', 'Edit the text above, then save your changes. Nothing is sent.');
+  status('save-status', 'Edit the text above, then save your changes. No reply is sent for you.');
 }
 $('save').addEventListener('click', async () => {
   if (!currentDraft) return;
@@ -114,7 +114,7 @@ $('save').addEventListener('click', async () => {
   status('save-status', 'Saving your changes…');
   try {
     const data = await jsonResponse(await fetch(`/api/drafts/${encodeURIComponent(currentDraft.name)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: $('draft-text').value }) }));
-    status('save-status', `Saved to ${data.filePath}. Nothing was sent.`);
+    status('save-status', `Saved to ${data.filePath}. No reply was sent.`);
   } catch (error) { status('save-status', error.message, true); }
   finally { $('save').disabled = false; }
 });
