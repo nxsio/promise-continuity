@@ -1,6 +1,6 @@
 # Yesterday's promise. Today's reply to edit.
 
-Paste a Markdown note, or choose a notes folder and watch new promises appear as you write. Promise Continuity remembers them across sessions and saves an editable reply for the one you select. Notes and drafts stay in local files. Drafting sends your request and a relevant note excerpt to your configured model provider; Tavily receives your query only when you select web search. It never sends the reply.
+Paste a note, choose the promise you meant, and save an editable reply. The local page can watch a notes folder; the Cloudflare page accepts pasted notes and stores each visitor's notes and drafts in a separate workspace. Drafting sends your request and a relevant note excerpt to your configured model provider. Tavily receives your query only when you select web search. You send the final reply yourself.
 
 ## Run the local page
 
@@ -24,9 +24,26 @@ The default model endpoint is NVIDIA Nemotron 3 Super on [Nebius Token Factory](
 PROMISE_MODEL_PROVIDER=deepinfra DEEPINFRA_API_KEY=your-development-key pnpm web
 ```
 
-`NEMOTRON_BASE_URL` and `NEMOTRON_MODEL` can override an OpenAI-compatible endpoint and model. The provider defaults and key names are in `src/config.js`. Selecting web search on the page sends only your chosen query to Tavily and requires `TAVILY_API_KEY`. Search is off by default. When it runs, the page shows returned source links; when it fails, no draft is marked complete.
+`NEMOTRON_BASE_URL` and `NEMOTRON_MODEL` can override an OpenAI-compatible endpoint and model. The provider defaults and key names are in `src/providers.js`. Selecting web search on the page sends only your chosen query to Tavily and requires `TAVILY_API_KEY`. Search is off by default. When it runs, the page shows returned source links; when it fails, no draft is marked complete.
 
 The original note and saved draft stay in local files. Continuity Core stores the promise in local SQLite through its Streamable HTTP MCP server and the official MCP client SDK. The selected note excerpt goes to the configured model provider when you prepare a draft. You review and send the final message yourself.
+
+## Run the Cloudflare page
+
+The independent `cloudflare/` Worker serves `/` and the same note, promise, and draft `/api` flow. It uses Cloudflare D1 for visitor notes, promise ownership, drafts, and daily model-call reservations. An HttpOnly, SameSite cookie holds a random visitor ID. The browser's cookie is the only way back to that workspace; use **Download your data** before clearing it. The online page does not watch files on a visitor's computer.
+
+The Worker calls a separate [Continuity Core](https://github.com/nxsio/continuity-core) Streamable HTTP MCP service at `CONTINUITY_MCP_URL`. That service must require the same `CORE_SHARED_SECRET` bearer token. A missing or failing MCP service, model, or requested Tavily search returns an error; it never produces a completed draft from a substitute response.
+
+Use Node.js 24+ and pnpm. Install with `pnpm install`. Create a D1 database, then replace the zero UUID in `cloudflare/wrangler.jsonc` with the database ID returned by Wrangler:
+
+```bash
+pnpm exec wrangler d1 create promise-continuity
+pnpm exec wrangler d1 migrations apply DB --remote --config cloudflare/wrangler.jsonc
+```
+
+Set `CONTINUITY_MCP_URL`, `CORE_SHARED_SECRET`, and `DEEPINFRA_API_KEY` as Worker secrets using `pnpm exec wrangler secret put NAME --config cloudflare/wrangler.jsonc`. `CONTINUITY_MCP_URL` must point to the HTTPS `/mcp` endpoint of the deployed Core Worker. The checked-in `PROMISE_MODEL_PROVIDER` value is `deepinfra`; its key stays in a Worker secret. For Nebius Token Factory, set `NEBIUS_API_KEY` as a secret and change only `PROMISE_MODEL_PROVIDER` to `nebius` in `cloudflare/wrangler.jsonc`. The endpoint, model ID, and key selection then come from `src/providers.js`; no source edit is needed. Set `TAVILY_API_KEY` as a secret to enable the optional web search checkbox.
+
+Run `pnpm exec wrangler dev --config cloudflare/wrangler.jsonc` for local development. Apply the same migration with `--local` for its local D1 database. When the Core endpoint and secrets are configured, publish with `pnpm exec wrangler deploy --config cloudflare/wrangler.jsonc`. The Worker reserves every drafting attempt in D1 before calling Tavily or the model. `DAILY_MODEL_LIMIT` and `VISITOR_DAILY_MODEL_LIMIT` in `cloudflare/wrangler.jsonc` default to 100 total and 3 per visitor per UTC day; the global cap still applies if someone clears cookies. The Worker returns a limit error after either cap is reached.
 
 ## Command line
 
