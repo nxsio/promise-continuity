@@ -56,6 +56,11 @@ async function refreshPromises() {
     $('selected').textContent = 'Choose a promise from your saved list.';
     $('prepare').disabled = true;
   }
+  if (!selectedId && promises.length === 1) {
+    selectedId = promises[0].id;
+    $('selected').textContent = promises[0].quote;
+    $('prepare').disabled = false;
+  }
   renderPromises();
 }
 
@@ -102,6 +107,18 @@ $('capture').addEventListener('click', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: $('note').value })
     }));
     await refreshPromises();
+    if (data.saved.length === 1) {
+      const saved = promises.find(item => item.id === data.saved[0].id);
+      if (saved) {
+        selectedId = saved.id;
+        $('selected').textContent = saved.quote;
+        $('prepare').disabled = false;
+        renderPromises();
+        if (window.matchMedia('(max-width: 800px)').matches) {
+          $('draft-heading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
     status('capture-status', `${data.saved.length} promise${data.saved.length === 1 ? '' : 's'} saved.`);
   } catch (error) { status('capture-status', error.message, true); }
   finally { $('capture').disabled = false; }
