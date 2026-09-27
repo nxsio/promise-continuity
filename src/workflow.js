@@ -5,7 +5,7 @@ import { config, mcpConfig } from './config.js';
 import { withMemory } from './mcp.js';
 import { complete } from './model.js';
 import { searchTavily } from './search.js';
-import { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments, sourceDetails, recallAll } from './promise-utils.js';
+import { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments, sourceDetails, recallAll, choosePromise } from './promise-utils.js';
 
 export { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments } from './promise-utils.js';
 const draftName = /^reply-\d{4}-\d{2}-\d{2}-[a-f0-9]{8}\.md$/;
@@ -56,15 +56,8 @@ function selectMemory(memories, request, requestedId) {
     if (!match) throw new Error(`No saved promise with id ${requestedId} in this context.`);
     return match;
   }
-  const words = text => new Set(text.toLowerCase().match(/[a-z0-9]{3,}|[\p{Script=Han}]{2,}/gu) ?? []);
-  const query = words(request);
-  const ranked = eligible.map(memory => ({ memory, score: [...words(memory.commitment)].filter(word => query.has(word)).length }))
-    .sort((a, b) => b.score - a.score);
-  if (!ranked.length) throw new Error('No promises found in this context. Add a note first.');
-  if (!ranked[0].score || (ranked[1] && ranked[0].score === ranked[1].score)) {
-    throw new Error(`Promise is ambiguous. Choose an ID from: ${ranked.map(item => `${item.memory.id}: ${item.memory.commitment}`).join(' | ')}`);
-  }
-  return ranked[0].memory;
+  const chosen = choosePromise(eligible.map(memory => ({ id: memory.id, quote: memory.commitment })), request);
+  return eligible.find(memory => memory.id === chosen.id);
 }
 
 export async function prepareDraft({ request, context = 'personal', id = null, searchQuery = null, onStage = () => {} }) {
@@ -108,7 +101,7 @@ export async function prepareDraft({ request, context = 'personal', id = null, s
   await writeFile(filePath, `# Reply draft\n\n${draft.text}${footer}`, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
   return { id: selected.id, quote: selected.quote, sourceNote: selected.details.sourceNote, sourceFile: basename(selected.details.sourceNote),
     text: draft.text, filePath, name, protocol: selected.protocol,
-    model: { provider: modelConfig.provider, name: draft.model, status: draft.status, tokens: draft.tokens, elapsedMs: draft.elapsedMs },
+    model: { provider: modelConfig.provider, name: draft.model, status: draft.status, tokens: draft.tokens, estimatedCostUsd: draft.estimatedCostUsd, elapsedMs: draft.elapsedMs },
     web: web ? { query: web.query, sources: web.sources, requestId: web.requestId, credits: web.credits, elapsedMs: web.elapsedMs } : null };
 }
 

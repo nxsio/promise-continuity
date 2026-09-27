@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f4">
+  <title>Promise Continuity · Alexa+ simulation</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/alexa.js" defer></script>
+</head>
+<body>
+  <header class="masthead"><a href="/" class="brand">Promise <span>Continuity</span></a><span class="local">ALEXA+ SIMULATION <span class="signal"></span></span></header>
+  <main>
+    <section class="intro"><h1>Pick up the promise.<br><em>Leave with a reply.</em></h1><p class="lead">Save a note today. Later, type a request as you would to Alexa+. See the promise it found and the reply it saved for your review.</p></section>
+    <div class="columns">
+      <section class="panel notes" aria-labelledby="note-heading">
+        <div class="panel-head"><span class="step">01 / EARLIER</span><h2 id="note-heading">What did you promise?</h2><p>Save a note in your workspace. The promise remains available when you return.</p></div>
+        <label class="field-label" for="note">YOUR NOTE</label>
+        <textarea id="note" maxlength="40000" placeholder="I promised Maya an update on the launch by Monday. The outline is ready; I still need to check the final numbers."></textarea>
+        <button id="capture" class="primary" type="button">Remember this promise <span aria-hidden="true">↗</span></button>
+        <p id="capture-status" class="status" role="status" aria-live="polite"></p>
+        <div class="list-head"><h3>Before · Saved promises</h3><span id="promise-count">—</span></div>
+        <p id="list-empty" class="empty">Save a note to begin.</p>
+        <div id="promises" class="promise-list" role="group" aria-label="Saved promises"></div>
+      </section>
+      <section class="panel draft" aria-labelledby="reply-heading">
+        <div class="panel-head"><span class="step">02 / LATER</span><h2 id="reply-heading">Ask to continue</h2><p>Your request finds the matching saved promise, then prepares a reply. You choose what to send.</p></div>
+        <label class="field-label" for="request">TYPE YOUR REQUEST</label>
+        <input id="request" type="text" maxlength="2000" value="Alexa, pick up my promise to Maya and prepare a reply.">
+        <button id="prepare" class="primary" type="button">Continue my promise <span aria-hidden="true">↗</span></button>
+        <p id="draft-status" class="status" role="status" aria-live="polite"></p>
+        <div id="draft-result" hidden>
+          <div class="selected-label">FOUND IN YOUR SAVED NOTE</div><div id="recovered" class="selected"></div>
+          <div class="result-head"><h3>After · Reply saved for review</h3><span id="model-meta"></span></div>
+          <label class="field-label" for="draft-text">EDIT YOUR REPLY</label><textarea id="draft-text" maxlength="20000"></textarea>
+          <button id="save" class="secondary" type="button">Save my changes</button>
+          <p id="save-status" class="status" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+    </div>
+    <footer>This is a web simulation of an Alexa+ style request. It uses the saved promise and a live MCP memory tool; it does not connect to an Alexa device. Drafting sends your request and a note excerpt to the configured model provider. No reply is sent for you. <a href="/">Open the full workspace</a> or <a href="/api/export">download your data</a>.</footer>
+  </main>
+</body>
+</html>

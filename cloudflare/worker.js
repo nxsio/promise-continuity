@@ -1,5 +1,5 @@
 import { withCore } from './mcp.js';
-import { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments, recallAll, sourceDetails } from '../src/promise-utils.js';
+import { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments, recallAll, sourceDetails, choosePromise } from '../src/promise-utils.js';
 import { modelConfig } from '../src/providers.js';
 import { complete } from '../src/model.js';
 import { searchTavily } from '../src/search.js';
@@ -133,21 +133,28 @@ async function reserveInference(env, visitor) {
 }
 
 async function prepare(env, visitor, input, stage) {
-  const selected = await env.DB.prepare(`SELECT p.core_id, p.quote, p.note_id, n.text AS note
-    FROM promises p JOIN notes n ON n.id = p.note_id AND n.visitor_id = p.visitor_id
-    WHERE p.visitor_id = ? AND p.core_id = ?`).bind(visitor, input.id).first();
-  if (!selected) throw new HttpError(404, 'Choose a saved promise from your list.');
   const model = modelConfig(env);
   if (input.searchQuery && !model.tavilyKey) throw new Error('TAVILY_API_KEY is required when web search is requested.');
   stage('Recalling your saved promise');
-  const protocol = await withCore(env, async memory => {
-    const resumed = await memory.call('resume_commitment', { id: selected.core_id });
-    const details = JSON.parse(resumed.next_step);
-    if (resumed.context !== contextFor(visitor) || resumed.commitment !== selected.quote || details.noteId !== selected.note_id) {
-      throw new Error('Memory changed during this request.');
+  const { id: coreId, protocol, resumed } = await withCore(env, async memory => {
+    let id = input.id;
+    if (id == null) {
+      const owned = (await env.DB.prepare('SELECT core_id, quote FROM promises WHERE visitor_id = ?').bind(visitor).all()).results;
+      const ownedIds = new Set(owned.map(row => row.core_id));
+      const recalled = await recallAll(memory, contextFor(visitor));
+      id = choosePromise(recalled.filter(item => ownedIds.has(item.id) && sourceDetails(item))
+        .map(item => ({ id: item.id, quote: item.commitment })), input.request).id;
     }
-    return memory.protocol;
+    return { id, protocol: memory.protocol, resumed: await memory.call('resume_commitment', { id }) };
   });
+  const selected = await env.DB.prepare(`SELECT p.core_id, p.quote, p.note_id, n.text AS note
+    FROM promises p JOIN notes n ON n.id = p.note_id AND n.visitor_id = p.visitor_id
+    WHERE p.visitor_id = ? AND p.core_id = ?`).bind(visitor, coreId).first();
+  if (!selected) throw new HttpError(404, 'Choose a saved promise from your list.');
+  const details = JSON.parse(resumed.next_step);
+  if (resumed.context !== contextFor(visitor) || resumed.commitment !== selected.quote || details.noteId !== selected.note_id) {
+    throw new Error('Memory changed during this request.');
+  }
   if (!selected.note.includes(selected.quote)) throw new Error('The saved note no longer contains this promise.');
   await reserveInference(env, visitor);
   let web = null;
@@ -172,7 +179,7 @@ async function prepare(env, visitor, input, stage) {
   return {
     id: selected.core_id, quote: selected.quote, sourceNote: 'Pasted note', sourceFile: 'Pasted note',
     text: draft.text, name: id, protocol,
-    model: { provider: model.provider, name: draft.model, status: draft.status, tokens: draft.tokens, elapsedMs: draft.elapsedMs },
+    model: { provider: model.provider, name: draft.model, status: draft.status, tokens: draft.tokens, estimatedCostUsd: draft.estimatedCostUsd, elapsedMs: draft.elapsedMs },
     web: web ? { query: web.query, sources: web.sources, requestId: web.requestId, credits: web.credits, elapsedMs: web.elapsedMs } : null
   };
 }
@@ -202,12 +209,12 @@ async function api(request, env, visitor, path) {
     if (typeof data.text !== 'string' || !data.text.trim() || data.text.length > MAX_NOTE_CHARS) throw new HttpError(400, 'Note must be between 1 and 40,000 characters.');
     return json(await capture(env, visitor, data.text));
   }
-  if (request.method === 'POST' && path === '/api/drafts') {
+  if (request.method === 'POST' && (path === '/api/drafts' || path === '/api/alexa/drafts')) {
     const data = await bodyJson(request, 16_384);
-    if (!Number.isSafeInteger(data.id) || data.id < 1) throw new HttpError(400, 'Select a saved promise.');
+    if (path === '/api/drafts' && (!Number.isSafeInteger(data.id) || data.id < 1)) throw new HttpError(400, 'Select a saved promise.');
     if (typeof data.request !== 'string' || !data.request.trim() || data.request.length > 2_000) throw new HttpError(400, 'Request must be between 1 and 2,000 characters.');
     if (data.searchQuery != null && (typeof data.searchQuery !== 'string' || !data.searchQuery.trim() || data.searchQuery.length > 500)) throw new HttpError(400, 'Search query must be between 1 and 500 characters.');
-    return draftStream(env, visitor, data);
+    return draftStream(env, visitor, { ...data, id: path === '/api/alexa/drafts' ? null : data.id });
   }
   if (request.method === 'GET' && path === '/api/drafts') {
     const rows = (await env.DB.prepare('SELECT id, core_id, text, created_at, edited_at FROM drafts WHERE visitor_id = ? ORDER BY created_at DESC LIMIT 20').bind(visitor).all()).results;

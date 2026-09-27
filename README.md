@@ -4,6 +4,12 @@ Paste a note, choose the promise you meant, and save an editable reply. The loca
 
 [Try the live demo](https://promise-continuity.nxsio.com/). It currently uses DeepInfra for the development run. Once a Nebius Token Factory key is issued, its Worker secret and one provider setting switch the same flow to Nebius.
 
+## Alexa+ web simulation
+
+The Alexa+ simulation is a separate `/alexa.html` entry for continuing a personal promise. Save a note, return later, and type a request such as “Alexa, pick up my promise to Maya and prepare a reply.” The request selects a matching saved commitment through Continuity Core MCP, resumes it, and saves an editable draft. The page shows the recovered sentence next to the result so you can see what carried across sessions. It is a web simulation; it does not connect to an Alexa device or use an Amazon SDK.
+
+For a local run, start Continuity Core and this page as below, then open `http://127.0.0.1:43188/alexa.html`. The Cloudflare Worker serves the same route and uses the same memory and model flow as the main page. With several saved promises, include a recipient or topic in the request; an ambiguous request asks you to choose on the main page instead of drafting from the wrong note.
+
 ## Run the local page
 
 Use Node.js 24+ and pnpm. Start [Continuity Core](https://github.com/nxsio/continuity-core) separately with `pnpm start`; keep its SQLite database when you restart it. In this repository, install dependencies once with `pnpm install`, set your model key in the server environment, and run:

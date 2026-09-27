@@ -14,6 +14,19 @@ export function sourceDetails(memory) {
   } catch { return null; }
 }
 
+export function choosePromise(promises, request) {
+  if (!promises.length) throw new Error('No promises found in this workspace. Add a note first.');
+  if (promises.length === 1) return promises[0];
+  const words = text => new Set(text.toLowerCase().match(/[a-z0-9]{3,}|[\p{Script=Han}]{2,}/gu) ?? []);
+  const query = words(request);
+  const ranked = promises.map(promise => ({ promise, score: [...words(promise.quote)].filter(word => query.has(word)).length }))
+    .sort((a, b) => b.score - a.score);
+  if (!ranked[0].score || ranked[0].score === ranked[1].score) {
+    throw new Error(`Promise is ambiguous. Choose one in the main page: ${ranked.map(item => `${item.promise.id}: ${item.promise.quote}`).join(' | ')}`);
+  }
+  return ranked[0].promise;
+}
+
 export async function recallAll(memory, context) {
   const commitments = [];
   let beforeId = null;

@@ -8,7 +8,7 @@ import { captureNote, extractCommitments, listPromises, prepareDraft, saveEdited
 import { startNoteWatch } from './watch.js';
 
 const webDir = fileURLToPath(new URL('../web/', import.meta.url));
-const assets = new Map([['/', ['index.html', 'text/html; charset=utf-8']], ['/styles.css', ['styles.css', 'text/css; charset=utf-8']], ['/app.js', ['app.js', 'text/javascript; charset=utf-8']]]);
+const assets = new Map([['/', ['index.html', 'text/html; charset=utf-8']], ['/alexa.html', ['alexa.html', 'text/html; charset=utf-8']], ['/styles.css', ['styles.css', 'text/css; charset=utf-8']], ['/app.js', ['app.js', 'text/javascript; charset=utf-8']], ['/alexa.js', ['alexa.js', 'text/javascript; charset=utf-8']]]);
 const port = Number(process.env.PROMISE_PORT ?? 43188);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PROMISE_PORT must be a valid port.');
 const subscribers = new Set();
@@ -79,15 +79,15 @@ const server = createServer(async (req, res) => {
       catch (error) { if (error.code !== 'EEXIST') throw error; }
       return send(res, 200, await captureNote(sourceNote));
     }
-    if (req.method === 'POST' && path === '/api/drafts') {
+    if (req.method === 'POST' && (path === '/api/drafts' || path === '/api/alexa/drafts')) {
       const data = await bodyJson(req, 16_384);
-      if (!Number.isInteger(data.id) || data.id < 1) throw new Error('Select a saved promise.');
+      if (path === '/api/drafts' && (!Number.isInteger(data.id) || data.id < 1)) throw new Error('Select a saved promise.');
       if (typeof data.request !== 'string' || !data.request.trim() || data.request.length > 2_000) throw new Error('Request must be between 1 and 2,000 characters.');
       if (data.searchQuery != null && (typeof data.searchQuery !== 'string' || !data.searchQuery.trim() || data.searchQuery.length > 500)) throw new Error('Search query must be between 1 and 500 characters.');
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
       const event = payload => res.write(`${JSON.stringify(payload)}\n`);
       try {
-        const result = await prepareDraft({ id: data.id, request: data.request, searchQuery: data.searchQuery ?? null, onStage: message => event({ type: 'stage', message }) });
+        const result = await prepareDraft({ id: path === '/api/alexa/drafts' ? null : data.id, request: data.request, searchQuery: data.searchQuery ?? null, onStage: message => event({ type: 'stage', message }) });
         event({ type: 'result', result });
       } catch (error) { event({ type: 'error', message: errorMessage(error) }); }
       return res.end();

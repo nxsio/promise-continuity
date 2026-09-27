@@ -23,6 +23,7 @@ export async function complete(modelConfig, messages, maxTokens = 900) {
       output: data.usage?.completion_tokens ?? null,
       total: data.usage?.total_tokens ?? null
     },
+    estimatedCostUsd: data.usage?.estimated_cost ?? null,
     elapsedMs: Math.round(performance.now() - started)
   };
 }
