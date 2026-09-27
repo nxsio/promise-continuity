@@ -179,5 +179,14 @@ $('save').addEventListener('click', async () => {
   finally { $('save').disabled = false; }
 });
 
+$('copy-reply').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('draft-text').value);
+    status('save-status', 'Reply copied. Review it in your message app before sending.');
+  } catch {
+    status('save-status', 'Copy unavailable. Select the reply above instead.', true);
+  }
+});
+
 refreshPromises().catch(error => status('capture-status', error.message, true));
 refreshDrafts().catch(error => status('draft-status', error.message, true));
