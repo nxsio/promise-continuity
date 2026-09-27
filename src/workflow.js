@@ -5,7 +5,7 @@ import { config, mcpConfig } from './config.js';
 import { withMemory } from './mcp.js';
 import { complete } from './model.js';
 import { searchTavily } from './search.js';
-import { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments, sourceDetails, recallAll, choosePromise } from './promise-utils.js';
+import { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments, sourceDetails, recallAll, choosePromise, assertSinglePromise } from './promise-utils.js';
 
 export { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments } from './promise-utils.js';
 const draftName = /^reply-\d{4}-\d{2}-\d{2}-[a-f0-9]{8}\.md$/;
@@ -54,6 +54,7 @@ function selectMemory(memories, request, requestedId) {
   if (requestedId != null) {
     const match = eligible.find(item => item.id === requestedId);
     if (!match) throw new Error(`No saved promise with id ${requestedId} in this context.`);
+    assertSinglePromise(match.commitment);
     return match;
   }
   const chosen = choosePromise(eligible.map(memory => ({ id: memory.id, quote: memory.commitment })), request);

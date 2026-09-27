@@ -1,5 +1,5 @@
 import { withCore } from './mcp.js';
-import { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments, recallAll, sourceDetails, choosePromise } from '../src/promise-utils.js';
+import { MAX_NOTE_CHARS, MAX_DRAFT_CHARS, extractCommitments, recallAll, sourceDetails, choosePromise, assertSinglePromise } from '../src/promise-utils.js';
 import { modelConfig } from '../src/providers.js';
 import { complete } from '../src/model.js';
 import { searchTavily } from '../src/search.js';
@@ -155,6 +155,7 @@ async function prepare(env, visitor, input, stage) {
   if (resumed.context !== contextFor(visitor) || resumed.commitment !== selected.quote || details.noteId !== selected.note_id) {
     throw new Error('Memory changed during this request.');
   }
+  assertSinglePromise(selected.quote);
   if (!selected.note.includes(selected.quote)) throw new Error('The saved note no longer contains this promise.');
   await reserveInference(env, visitor);
   let web = null;

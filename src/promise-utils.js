@@ -1,9 +1,15 @@
 export const MAX_NOTE_CHARS = 40_000;
 export const MAX_DRAFT_CHARS = 20_000;
+const splitMarker = /\b(?:I promised|I told|I agreed|I owe|I committed)\b|我(?:答应|承诺|说好|保证)(?![\s，。]*$)/giu;
+
+export function assertSinglePromise(quote) {
+  if ([...quote.matchAll(splitMarker)].length > 1) {
+    throw new Error('This saved item combines multiple promises. Save the original note again to split them, then choose one promise.');
+  }
+}
 
 export function extractCommitments(note) {
   const marker = /\b(?:I promised|I told|I agreed|I owe|I committed|I need to|I have to|I will|I'll|I’m going to|I'm going to)\b|我(?:答应|承诺|说好|保证)(?![\s，。]*$)/iu;
-  const splitMarker = /\b(?:I promised|I told|I agreed|I owe|I committed)\b|我(?:答应|承诺|说好|保证)(?![\s，。]*$)/giu;
   const quotes = [];
   for (const raw of note.split(/\r?\n/)) {
     const line = raw.replace(/^\s*(?:[-*+]\s+|>\s*|\d+\.\s+)/, '').trim();
@@ -31,12 +37,17 @@ export function sourceDetails(memory) {
 
 export function choosePromise(promises, request) {
   if (!promises.length) throw new Error('No promises found in this workspace. Add a note first.');
-  if (promises.length === 1) return promises[0];
+  const separate = promises.filter(promise => [...promise.quote.matchAll(splitMarker)].length < 2);
+  if (!separate.length) assertSinglePromise(promises[0].quote);
+  if (separate.length === 1 && promises.length === 1) return separate[0];
   const words = text => new Set(text.toLowerCase().match(/[a-z0-9]{3,}|[\p{Script=Han}]{2,}/gu) ?? []);
   const query = words(request);
-  const ranked = promises.map(promise => ({ promise, score: [...words(promise.quote)].filter(word => query.has(word)).length }))
+  const ranked = separate.map(promise => ({ promise, score: [...words(promise.quote)].filter(word => query.has(word)).length }))
     .sort((a, b) => b.score - a.score);
-  if (!ranked[0].score || ranked[0].score === ranked[1].score) {
+  if (!ranked[0].score && separate.length === 1) {
+    throw new Error('No separate saved promise matches this request. Save the original note again to split older mixed promises, then choose one.');
+  }
+  if (!ranked[0].score || ranked[0].score === ranked[1]?.score) {
     throw new Error(`Promise is ambiguous. Choose one in the main page: ${ranked.map(item => `${item.promise.id}: ${item.promise.quote}`).join(' | ')}`);
   }
   return ranked[0].promise;
