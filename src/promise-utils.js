@@ -2,9 +2,24 @@ export const MAX_NOTE_CHARS = 40_000;
 export const MAX_DRAFT_CHARS = 20_000;
 
 export function extractCommitments(note) {
-  return [...new Set(note.split(/\r?\n/)
-    .map(line => line.replace(/^\s*(?:[-*+]\s+|>\s*|\d+\.\s+)/, '').trim())
-    .filter(line => /\b(?:I promised|I told|I agreed|I owe|I committed|I need to|I have to|I will|I'll|I’m going to|I'm going to)\b/i.test(line) || /我(?:答应|承诺|说好|保证)(?![\s，。]*$)/u.test(line)))];
+  const marker = /\b(?:I promised|I told|I agreed|I owe|I committed|I need to|I have to|I will|I'll|I’m going to|I'm going to)\b|我(?:答应|承诺|说好|保证)(?![\s，。]*$)/iu;
+  const splitMarker = /\b(?:I promised|I told|I agreed|I owe|I committed)\b|我(?:答应|承诺|说好|保证)(?![\s，。]*$)/giu;
+  const quotes = [];
+  for (const raw of note.split(/\r?\n/)) {
+    const line = raw.replace(/^\s*(?:[-*+]\s+|>\s*|\d+\.\s+)/, '').trim();
+    if (!marker.test(line)) continue;
+    const matches = [...line.matchAll(splitMarker)];
+    if (matches.length < 2) quotes.push(line);
+    else {
+      for (let index = 0; index < matches.length; index++) {
+        const start = index === 0 ? 0 : matches[index].index;
+        const end = matches[index + 1]?.index ?? line.length;
+        const quote = line.slice(start, end).replace(/[\s,;，；]+$/, '').trim();
+        if (quote) quotes.push(quote);
+      }
+    }
+  }
+  return [...new Set(quotes)];
 }
 
 export function sourceDetails(memory) {

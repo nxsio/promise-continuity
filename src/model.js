@@ -6,16 +6,22 @@ export async function complete(modelConfig, messages, maxTokens = 900) {
       Authorization: `Bearer ${modelConfig.apiKey}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ model: modelConfig.model, messages, max_tokens: maxTokens }),
+    body: JSON.stringify({ model: modelConfig.model, messages, max_tokens: maxTokens, ...modelConfig.requestOptions }),
     signal: AbortSignal.timeout(90_000)
   });
   const body = await response.text();
-  if (!response.ok) throw new Error(`Model HTTP ${response.status}: ${body.slice(0, 1000)}`);
+  if (!response.ok) throw new Error(`Model HTTP ${response.status}. No draft was saved.`);
   const data = JSON.parse(body);
-  const answer = data.choices?.[0]?.message?.content;
-  if (typeof answer !== 'string' || !answer.trim()) throw new Error('Model returned no answer text');
+  const choice = data.choices?.[0];
+  const answer = choice?.message?.content;
+  if (choice?.finish_reason !== 'stop') throw new Error('The reply was incomplete. No draft was saved. Please try again.');
+  if (typeof answer !== 'string' || !answer.trim()) throw new Error('The model returned no reply. No draft was saved. Please try again.');
+  const text = answer.trim();
+  if (/<\/?think\b|\b(?:the user wants|the user asked|first,? i need to|possible reply:|final draft should|check for placeholders|let'?s break this down)\b/i.test(text)) {
+    throw new Error('The model returned notes instead of a reply. No draft was saved. Please try again.');
+  }
   return {
-    text: answer.trim(),
+    text,
     status: response.status,
     model: data.model ?? modelConfig.model,
     tokens: {
